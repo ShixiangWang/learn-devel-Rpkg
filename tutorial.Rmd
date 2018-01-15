@@ -44,6 +44,30 @@ install.packages(pkg, repos = NULL, type = "source")
 
 ## <a name="npar-pkg"></a>非参分析和npar包
 
+**非参分析**是一种数据分析方法，它在传统参数分析的假设（比如正态性和同方差）不成立的情况下特别有用。这里我们会着重比较两组间或多组相互独立的数值结果变量的方法。
+
+我们对`npar`包中的`life`数据集进行探究，它提供了对2007-2009年美国每个州65岁人的健康预期寿命（Healthy Life Expectancy, HLE）。估计值分别针对男性（`hlem`）和女性(`hlef`)。
+
+数据集也提供了一个名为`region`（地区）的变量，此变量分为东北部、中北部、南部和西部。我从R标准安装中的`state.region`数据框中提取该变量并添加到所关注的数据集中。
+
+假设我们想指导女性的HLE估计值是否在不同地区有显著的不同，一种方式是使用单因素方差分析，不过方差分析假设结果变量时正态分布的，并且不同地区之间的方差是同质的，让我们对这两个假设进行检查。
+
+女性的HLE估值的分布可以用直方图来可视化。
+
+```{r init, include=F}
+library(knitr)
+opts_chunk$set(message=FALSE, warning=FALSE, eval=TRUE, echo=TRUE, cache=TRUE)
+options(digits=3)
+options(max.print=200)
+```
+
+```{r}
+library(npar)
+hist(life$hlef, xlab="Healthy Life Expectancy (years) at Age 65",
+     main="Distribution of Healthy Life Expectancy for women",
+     col="grey", breaks = 10)
+```
+
 ## <a name="devel-pkg"></a>开发包
 
 ## <a name="document-pkg"></a>创建包的文档
