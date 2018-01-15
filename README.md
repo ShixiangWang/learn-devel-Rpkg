@@ -12,7 +12,7 @@ devtools::install_github("ShixiangWang/learn-devel-Rpkg")
 
 ## 教程
 
-[点击阅读](tutorial.Rmd)
+[点击阅读](tutorial.md)
 
 
 
