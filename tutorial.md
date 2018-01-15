@@ -64,7 +64,7 @@ hist(life$hlef, xlab="Healthy Life Expectancy (years) at Age 65",
      col="grey", breaks = 10)
 ```
 
-<img src="figure/unnamed-chunk-3-1.png" title="plot of chunk unnamed-chunk-3" alt="plot of chunk unnamed-chunk-3" style="display: block; margin: auto;" />
+<img src="figure/unnamed-chunk-1-1.png" title="plot of chunk unnamed-chunk-1" alt="plot of chunk unnamed-chunk-1" style="display: block; margin: auto;" />
 
 上图可以看出因变量是负偏的，较低的值数量较少。
 
@@ -80,7 +80,7 @@ ggplot(data=life, aes(x=region, y=hlef)) +
     theme_bw()
 ```
 
-<img src="figure/unnamed-chunk-4-1.png" title="plot of chunk unnamed-chunk-4" alt="plot of chunk unnamed-chunk-4" style="display: block; margin: auto;" />
+<img src="figure/unnamed-chunk-2-1.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" style="display: block; margin: auto;" />
 
 上图中的每个点代表一个州，每个地区的方差都有所不同，东北部和南部的方差差异最大。
 
