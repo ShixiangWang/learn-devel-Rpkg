@@ -56,7 +56,7 @@ install.packages(pkg, repos = NULL, type = "source")
 
 ```{r init, include=F}
 library(knitr)
-opts_chunk$set(message=FALSE, warning=FALSE, eval=TRUE, echo=TRUE, cache=TRUE)
+opts_chunk$set(message=FALSE, warning=FALSE, eval=TRUE, echo=TRUE, cache=TRUE, fig.align = "center")
 options(digits=3)
 options(max.print=200)
 ```
@@ -67,6 +67,21 @@ hist(life$hlef, xlab="Healthy Life Expectancy (years) at Age 65",
      main="Distribution of Healthy Life Expectancy for women",
      col="grey", breaks = 10)
 ```
+
+上图可以看出因变量是负偏的，较低的值数量较少。
+
+不同地区的HLE分数的方差可以用并排点图来可视化：
+
+```{r}
+library(ggplot2)
+ggplot(data=life, aes(x=region, y=hlef)) + 
+    geom_point(size=3, color="darkgrey") + 
+    labs(title="Distribution of HLE Estimates by Region",
+         x="US Region", y="Healthy Life Expectancy at Age 65") + 
+    theme_bw()
+```
+
+上图中的每个点代表一个州，每个地区的方差都有所不同，东北部和南部的方差差异最大。
 
 ## <a name="devel-pkg"></a>开发包
 
