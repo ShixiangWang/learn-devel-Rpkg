@@ -32,7 +32,8 @@
 
 请使用以下代码下载包，然后保存到你现在的工作目录，接着把它安装到默认的R库当中。
 
-```R
+
+```r
 pkg <- "npar_1.0.tar.gz"
 loc <- "http://www.statmethods.net/RiA"
 url <- paste(loc, pkg, sep="/")
@@ -64,7 +65,7 @@ hist(life$hlef, xlab="Healthy Life Expectancy (years) at Age 65",
      col="grey", breaks = 10)
 ```
 
-<img src="figure/unnamed-chunk-1-1.png" title="plot of chunk unnamed-chunk-1" alt="plot of chunk unnamed-chunk-1" style="display: block; margin: auto;" />
+![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7-1.png)
 
 上图可以看出因变量是负偏的，较低的值数量较少。
 
@@ -80,7 +81,7 @@ ggplot(data=life, aes(x=region, y=hlef)) +
     theme_bw()
 ```
 
-<img src="figure/unnamed-chunk-2-1.png" title="plot of chunk unnamed-chunk-2" alt="plot of chunk unnamed-chunk-2" style="display: block; margin: auto;" />
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8-1.png)
 
 上图中的每个点代表一个州，每个地区的方差都有所不同，东北部和南部的方差差异最大。
 
@@ -134,7 +135,7 @@ plot(results, col="lightblue", main="Multiple Comparisons",
      xlab="US Region", ylab="Healthy Life Expectancy (years) at Age 65")
 ```
 
-<img src="figure/unnamed-chunk-3-1.png" title="plot of chunk unnamed-chunk-3" alt="plot of chunk unnamed-chunk-3" style="display: block; margin: auto;" />
+![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9-1.png)
 
 首先，代码运行了一个Kruskal-Wallis检验，这是对不同地区间HLE差异的总体检验，p值0.0005指出确实存在差异。
 
@@ -169,6 +170,110 @@ plot(results, col="lightblue", main="Multiple Comparisons",
 - [summary.oneway](./npar/R/summary.R)
 - [plot.oneway](./npar/R/plot.R)
 
+
+每个文件的开头都包含了一系列以`#'`开头的注释。R解释器会忽略它们，不过我们可以使用`roxygen2`包来把这些注释转换为我们的R包文档。
+
+`oneway()`函数计算相关的统计量，`print()`、`summary()`和`plot()`展示结果。下面我们学习开发`oneway()`函数。
+
+**注意**，由于兼容性，代码不支持中文注释，后续使用的中文注释是为了方便理解，所以如果要运行后续代码，请使用英文包（压缩文件已经在仓库根目录下，请自行解压）。
+
+### 计算统计量
+
+[oneway.R](./npar/R/oneway.R)文件中的`oneway()`函数计算所有所需的统计量。
+
+**下面我们分段解析**。
+
+```R
+#' @title 非参组间比较
+#'
+#' @description
+#' \code{oneway} 计算非参组间比较，包括综合检验和事后成对组间比较
+#' 
+#' @details
+#' 这个函数计算了一个综合Kruskal-Wallis检验，用于检验组别是否相等，接着使用
+#' Wilcoxon秩和检验来进行成对比较。如果因变量之间没有相互依赖的话，可以计算精确
+#' 的Wilcoxon检验。使用\code{\link{p.adjust}}来对多重比较所得到的p值进行调整
+#' 
+#' @param formula 一个formula对象。用于表示因变量和分组变量之间的关系
+#' @param data 一个包含了模型里变量的数据框
+#' @param exact logical变量。如\code{TRUE}，计算精确的Wilcoxon检验
+#' @param sort logical变量，如果\code{TRUE}，用因变量中位数来对组别进行排序
+#' @param method 用于调整多重比较的p值的方法
+#' @export
+#' @return 一个有7个元素的列表
+#' \item{CALL}{函数调用}
+#' \item{data}{包含因变量和组间变量的数据框}
+#' \item{sumstats}{包含每组的描述性统计量的数据框}
+#' \item{kw}{K-W检验的结果}
+#' \item{method}{用于调整p值的方法}
+#' \item{wmc}{包含多重比较的数据框}
+#' \item{vnames}{变量名} 
+#' @author Rob Kabacoff <rkabacoff@@statmethods.net>
+#' @examples
+#' results <- oneway(hlef ~ region, life)
+#' summary(results)
+#' plot(results, col="lightblue", main="Multiple Comparisons",
+#'      xlab="US Region", ylab="Healthy Life Expectancy at Age 65")
+```
+
+头部包含以`#'`开头的注释会被`roxygen2`包用于生成包文档。接下来你会看到列出的函数参数。用户提供一个形为**因变量~分组变量**的模型公式和一个包含了数据的数据框。默认会计算近似的p值并按照因变量中位数对组别排序。用户可以从八种调整p值的方法选择一种，其中`holm`方法（列出的第一个选项）为默认选项。
+
+```R
+oneway <- function(formula, data, exact=FALSE, sort=TRUE,               
+                method=c("holm", "hochberg", "hommel", "bonferroni",      
+                         "BH", "BY", "fdr", "none")){
+  
+  if (missing(formula) || class(formula) != "formula" ||
+        length(all.vars(formula)) != 2)                                   
+       stop("'formula' is missing or incorrect")   # 检查参数
+
+  method <- match.arg(method)
+
+  df <- model.frame(formula, data)        # 设定数据                     
+  y <- df[[1]]
+  g <- as.factor(df[[2]])
+  vnames <- names(df)
+  
+  if(sort) g <- reorder(g, y, FUN=median)  # 重新排序                         
+  groups <- levels(g)
+  k <- nlevels(g)
+  
+  getstats <- function(x)(c(N = length(x), Median = median(x),      
+                          MAD = mad(x)))   # 总体统计量
+  sumstats <- t(aggregate(y, by=list(g), FUN=getstats)[2])
+  rownames(sumstats) <- c("n", "median", "mad")
+  colnames(sumstats) <- groups
+  
+  kw <- kruskal.test(formula, data)   # 统计检验                            
+  wmc <- NULL
+  for (i in 1:(k-1)){
+    for (j in (i+1):k){
+      y1 <- y[g==groups[i]]
+      y2 <- y[g==groups[j]] 
+      test <- wilcox.test(y1, y2, exact=exact)
+      r <- data.frame(Group.1=groups[i], Group.2=groups[j], 
+                      W=test$statistic[[1]], p=test$p.value)
+      # note the [[]] to return a single number
+      wmc <- rbind(wmc, r)
+    }
+  }
+  wmc$p <- p.adjust(wmc$p, method=method)
+  
+  
+  data <- data.frame(y, g)                                    
+  names(data) <- vnames
+  results <- list(CALL = match.call(), 
+                  data=data,
+                  sumstats=sumstats, kw=kw, 
+                  method=method, wmc=wmc, vnames=vnames)
+  class(results) <- c("oneway", "list")
+  return(results)
+}
+
+
+```
+
+结果被打包并作为一个列表返回。最后该列表的类被设置为`c("oneway", "list")`，**这是使用泛型函数处理对象的重要步骤**。
 
 ## <a name="document-pkg"></a>创建包的文档
 
