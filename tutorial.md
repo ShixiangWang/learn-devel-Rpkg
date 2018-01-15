@@ -84,6 +84,78 @@ ggplot(data=life, aes(x=region, y=hlef)) +
 
 上图中的每个点代表一个州，每个地区的方差都有所不同，东北部和南部的方差差异最大。
 
+**因此此数据不符合方差分析的两个重要假设**，所以我们需要不同的分析方法。不像方差分析，非参方法不作出正态性和同方差的假设。在这个例子中，我们只需要假设数据是有序的——更高的分值意味着更高的HLE。因此，对于此问题，非参方法是一个合理的选择。
+
+### npar包比较分组
+
+我们可以使用`npar`包比较独立组别的数值型因变量，至少要求它是有序的。对于数值型因变量和分类型分组变量，它提供了一下几方面功能：
+
+- 综合Kruskal-Wallis检验，检验组间是否有差异。
+- 每一组的描述性统计量
+- 事后比较（Wilcoxon秩和检验），即每次进行两组之间的比较，检验得到的p值可以调整，以进行多重比较。
+- 都带有注释的并排箱线图，用于可视化不同组别之间的差异。
+
+以下代码实现了用`npar`包对不同地区女性的HLE估值进行比较：
+
+
+```r
+library(npar)
+results <- oneway(hlef ~ region, life)
+summary(results)
+```
+
+```
+## data: hlef on region 
+## 
+## Omnibus Test
+## Kruskal-Wallis chi-squared = 17.8749, df = 3, p-value = 0.0004668
+## 
+## Descriptive Statistics
+##        South North Central   West Northeast
+## n      16.00         12.00 13.000     9.000
+## median 13.00         15.40 15.600    15.700
+## mad     1.48          1.26  0.741     0.593
+## 
+## Multiple Comparisons (Wilcoxon Rank Sum Tests)
+## Probability Adjustment = holm
+##         Group.1       Group.2    W       p   
+## 1         South North Central 28.0 0.00858 **
+## 2         South          West 27.0 0.00474 **
+## 3         South     Northeast 17.0 0.00858 **
+## 4 North Central          West 63.5 1.00000   
+## 5 North Central     Northeast 42.0 1.00000   
+## 6          West     Northeast 54.5 1.00000   
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+```r
+plot(results, col="lightblue", main="Multiple Comparisons",
+     xlab="US Region", ylab="Healthy Life Expectancy (years) at Age 65")
+```
+
+<img src="figure/unnamed-chunk-3-1.png" title="plot of chunk unnamed-chunk-3" alt="plot of chunk unnamed-chunk-3" style="display: block; margin: auto;" />
+
+首先，代码运行了一个Kruskal-Wallis检验，这是对不同地区间HLE差异的总体检验，p值0.0005指出确实存在差异。
+
+接着，计算了每一个地区的描述性统计量，东北部HLE估值最高，南部最低；地区变化量最小的是东北部，最大的是南部。
+
+尽管K-W检验表示不同地区的HLE有差异，但没有指出有多大的差异。若要得出此信息，需要用Wilcoxon秩和检验来成对地分组比较。对于四个组别，有4x(4-1)/2=6次比较。
+
+南部和中北部的差异是统计上显著的（p=0.009），而东北部和中北部之间的差异并不显著（p=1.0），实际上，南部和其他地区都有所差异，但是其他地区之间的差异并不显著。
+
+**在计算多重比较的时候，必须考虑到alpha膨胀的可能性：实际上组别之间并没有显著差异，但是计算出存在差异的概率有所上升。对于六次独立的比较过程，至少有一次出错误差异的概率是$1-(1-0.05)^6$或$0.26$。
+
+发现至少有一个错误的概率在四分之一左右，所以我们会想对每一次比较的p值进行调整，这样使得整体错误率保持在一个合理的水平（比如0.05）。
+
+`oneway()`函数使用R标准安装的`p.adjust()`函数来完成这个功能。`p.adjust()`函数用很多种方法的其中一种来对多重比较的p值进行调整。尽管Bonferonni校正可能最广为人知，但是Holm校正更加强大，因此后者被设置为默认选项。
+
+使用图形最容易看出不同组别之间的差异。`plot()`语句生成并排的箱线图。一条水平虚线表示所有观测值总体的中位数。
+
+这些分析明显地指出南部女性很可能在65岁之后的预期寿命更短。这对健康服务的分布和侧重点也有所启示。你如果想分析一下男性的HLE估计值，看看是否会有类似的结论。
+
+**下一节描述了`npar`包的代码文件**。
+
 ## <a name="devel-pkg"></a>开发包
 
 ## <a name="document-pkg"></a>创建包的文档
