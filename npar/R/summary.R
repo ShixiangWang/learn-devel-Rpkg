@@ -1,20 +1,18 @@
-#' @title Summarize oneway nonparametric analyses
+#' @title 汇总单因子非参分析的结果
 #'
 #' @description
-#' \code{summary.oneway} summarizes the results of a oneway 
-#' nonparametric analysis.
+#' \code{summary.oneway} 汇总了单因子非参分析的结果
 #'
 #' @details
-#' This function prints a summary of analyses produced by
-#' the \code{\link{oneway}} function. This includes descriptive
-#' statistics by group, an omnibus Kruskal-Wallis test, and 
-#' Wilcoxon pairwise multiple comparisons.
+#' 这个函数对\code{\link{oneway}}函数所分析的结果进行汇总并打印。这包括了每一组的
+#' 描述性统计量，一个综合的Kruskal-Wallis检验的结果，以及一个Wilcoxon成对多重比较
+#' 的结果
 #' 
-#' @param object an object of class \code{oneway}.
-#' @param ... additional parameters.
+#' @param object 一个\code{oneway}类型的对象
+#' @param ... 额外的参数
 #' @method summary oneway
 #' @export
-#' @return the input object is returned silently.
+#' @return 静默返回输入的对象
 #' @author Rob Kabacoff <rkabacoff@@statmethods.net>
 #' @examples
 #' results <- oneway(hlef ~ region, life)

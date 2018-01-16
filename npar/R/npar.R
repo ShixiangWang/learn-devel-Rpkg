@@ -1,7 +1,6 @@
-#' Functions for nonparametric group comparisons.
+#' 非参组间比较的函数
 #' 
-#' npar provides tools for calculating and visualizing
-#' nonparametric differences among groups.
+#' npar提供了计算和可视化组间差异的工具
 #' 
 #' @docType package
 #' @name npar-package

@@ -1,19 +1,15 @@
-#' @title Plot nonparametric group comparisons
+#' @title 对非参组间比较的结果进行绘图
 #'
 #' @description
-#' \code{plot.oneway} plots nonparametric group comparisons.
+#' \code{plot.oneway} 对非参组间比较的结果进行绘图
 #'
 #' @details
-#' This function plots nonparametric group comparisons
-#' created by the \code{\link{oneway}} function using
-#' annotated side by side boxplots. Medians and
-#' sample sizes are placed at the top of the chart.
-#' The overall median is represented by a horizontal
-#' dashed line.
+#' 这个函数使用标记了的并排箱线图对\code{\link{oneway}}函数所生成的非参组间比较
+#' 结果进行绘图。中位数和样本量被放置在图的上方、总体中位数用一条虚线进行表示
 #' 
-#' @param x an object of class \code{oneway}.
-#' @param ... additional arguments passed to the 
-#' \code{\link{boxplot}} function.
+#' @param x 一个\code{oneway}类型的对象
+#' @param ... 被传递给
+#' \code{\link{boxplot}} 的额外参数
 #' @method plot oneway
 #' @export
 #' @return NULL

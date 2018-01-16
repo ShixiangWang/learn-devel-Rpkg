@@ -70,7 +70,7 @@ hist(life$hlef, xlab="Healthy Life Expectancy (years) at Age 65",
      col="grey", breaks = 10)
 ```
 
-![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png)
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png)
 
 上图可以看出因变量是负偏的，较低的值数量较少。
 
@@ -86,7 +86,7 @@ ggplot(data=life, aes(x=region, y=hlef)) +
     theme_bw()
 ```
 
-![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png)
+![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6-1.png)
 
 上图中的每个点代表一个州，每个地区的方差都有所不同，东北部和南部的方差差异最大。
 
@@ -140,7 +140,7 @@ plot(results, col="lightblue", main="Multiple Comparisons",
      xlab="US Region", ylab="Healthy Life Expectancy (years) at Age 65")
 ```
 
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png)
+![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7-1.png)
 
 首先，代码运行了一个Kruskal-Wallis检验，这是对不同地区间HLE差异的总体检验，p值0.0005指出确实存在差异。
 
@@ -179,8 +179,6 @@ plot(results, col="lightblue", main="Multiple Comparisons",
 每个文件的开头都包含了一系列以`#'`开头的注释。R解释器会忽略它们，不过我们可以使用`roxygen2`包来把这些注释转换为我们的R包文档。
 
 `oneway()`函数计算相关的统计量，`print()`、`summary()`和`plot()`展示结果。下面我们学习开发`oneway()`函数。
-
-**注意**，由于兼容性，代码不支持中文注释，后续使用的中文注释是为了方便理解，所以如果要运行后续代码，请使用英文包（压缩文件已经在仓库根目录下，请自行解压）。
 
 ### 计算统计量
 
@@ -352,9 +350,238 @@ print.oneway <- function(x, ...){
 
 头部包含的以`#'`开头的注释会被`roxygen2`包生成包文档。`inherits()`函数用于确保被提交的对象有"oneway"这个类。一系列`cat()`函数打印对分析过程的描述。最后调用`print.default()`把多重比较打印出来。
 
+### 汇总结果
+
+与`print()`函数相比，`summary()`函数生成的输出更加全面，处理得更好。对于健康预期寿命数据，`summary(results)`的语句生成如下结果：
+
+
+```r
+summary(results)
+```
+
+```
+## data: hlef on region 
+## 
+## Omnibus Test
+## Kruskal-Wallis chi-squared = 17.8749, df = 3, p-value = 0.0004668
+## 
+## Descriptive Statistics
+##        South North Central   West Northeast
+## n      16.00         12.00 13.000     9.000
+## median 13.00         15.40 15.600    15.700
+## mad     1.48          1.26  0.741     0.593
+## 
+## Multiple Comparisons (Wilcoxon Rank Sum Tests)
+## Probability Adjustment = holm
+##         Group.1       Group.2    W       p   
+## 1         South North Central 28.0 0.00858 **
+## 2         South          West 27.0 0.00474 **
+## 3         South     Northeast 17.0 0.00858 **
+## 4 North Central          West 63.5 1.00000   
+## 5 North Central     Northeast 42.0 1.00000   
+## 6          West     Northeast 54.5 1.00000   
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+此输出包含了K-W检验的结果、每一组的描述性统计量（样本量、中位数和绝对离差中位数）以及多重比较的结果。此外，多重比较的表格用星号来标记出显著的结果。
+
+下方代码列出`summary.oneway()`函数的具体内容：
+
+```R
+#' @title 汇总单因子非参分析的结果
+#'
+#' @description
+#' \code{summary.oneway} 汇总了单因子非参分析的结果
+#'
+#' @details
+#' 这个函数对\code{\link{oneway}}函数所分析的结果进行汇总并打印。这包括了每一组的
+#' 描述性统计量，一个综合的Kruskal-Wallis检验的结果，以及一个Wilcoxon成对多重比较
+#' 的结果
+#' 
+#' @param object 一个\code{oneway}类型的对象
+#' @param ... 额外的参数
+#' @method summary oneway
+#' @export
+#' @return 静默返回输入的对象
+#' @author Rob Kabacoff <rkabacoff@@statmethods.net>
+#' @examples
+#' results <- oneway(hlef ~ region, life)
+#' summary(results)
+summary.oneway <- function(object, ...){
+  if (!inherits(object, "oneway")) 
+    stop("Object must be of class 'oneway'")
+    
+  if(!exists("digits")) digits <- 4L
+  
+  kw <- object$kw
+  wmc <- object$wmc
+  
+  cat("data:", object$vnames[1], "on", object$vnames[2], "\n\n")
+  
+  ############ K-W 检验 #############
+  cat("Omnibus Test\n")                        
+  cat(paste("Kruskal-Wallis chi-squared = ", 
+             round(kw$statistic,4), 
+            ", df = ", round(kw$parameter, 3), 
+            ", p-value = ", 
+               format.pval(kw$p.value, digits = digits), 
+            "\n\n", sep=""))
+  
+  #### 描述性统计量 #####
+  cat("Descriptive Statistics\n")     
+  print(object$sumstats, ...)
+  
+  #### 表格标记 ######
+  wmc$stars <- " "                  
+  wmc$stars[wmc$p <   .1] <- "."
+  wmc$stars[wmc$p <  .05] <- "*"
+  wmc$stars[wmc$p <  .01] <- "**"
+  wmc$stars[wmc$p < .001] <- "***"
+  names(wmc)[which(names(wmc)=="stars")] <- " "                          
+  
+  cat("\nMultiple Comparisons (Wilcoxon Rank Sum Tests)\n")    
+  cat(paste("Probability Adjustment = ", object$method, "\n", sep=""))
+  print(wmc, ...)
+  cat("---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n")
+}
+
+```
+
+### 绘制结果
+
+最后的函数`plot()`对`oneway()`函数返回的结果进行可视化：
+
+
+```r
+plot(results, col="lightblue", main="Multiple Comparisons",
+     xlab="US Region", ylab="Healthy Life Expectancy (years) at Age 65")
+```
+
+![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10-1.png)
+
+不像标准的箱线图，这幅图提供了展示每一组中位数和样本量的标记，还有一条展现出总体中位数的虚线。下面是函数的源代码：
+
+```R
+#' @title 对非参组间比较的结果进行绘图
+#'
+#' @description
+#' \code{plot.oneway} 对非参组间比较的结果进行绘图
+#'
+#' @details
+#' 这个函数使用标记了的并排箱线图对\code{\link{oneway}}函数所生成的非参组间比较
+#' 结果进行绘图。中位数和样本量被放置在图的上方、总体中位数用一条虚线进行表示
+#' 
+#' @param x 一个\code{oneway}类型的对象
+#' @param ... 被传递给
+#' \code{\link{boxplot}} 的额外参数
+#' @method plot oneway
+#' @export
+#' @return NULL
+#' @author Rob Kabacoff <rkabacoff@@statmethods.net>
+#' @examples
+#' results <- oneway(hlef ~ region, life)
+#' plot(results, col="lightblue", main="Multiple Comparisons",
+#'      xlab="US Region", ylab="Healthy Life Expectancy at Age 65")
+plot.oneway <- function(x, ...){  
+
+  ###### 检查输入 ##########
+  if (!inherits(x, "oneway")) 
+    stop("Object must be of class 'oneway'")
+    
+  ##### 生成箱线图 ########
+  data <- x$data                                    
+  y <- data[,1]
+  g <- data[,2]
+  stats <- x$sumstats
+  lbl <- paste("md=", stats[2,], "\nn=", stats[1,], sep="")
+  opar <- par(no.readonly=TRUE)
+  par(mar=c(5,4,8,2))
+  boxplot(y~g,  ...)
+  ###### 为图添加标记 #######
+  abline(h=median(y), lty=2, col="darkgray")
+  axis(3, at=1:length(lbl), labels=lbl, cex.axis=.9)
+  par(opar)
+}
+
+```
+
+首先，要检查被传到函数的参数的类型。然后，代码提取出原始的数据，画出箱线图。接下来添加标记（中位数、样本量和总体中位数）。使用`abline()`来添加总体中位数那条线，使用`axis()`函数在图像的顶部添加中位数和样本量。
+
+### 添加样本数据到包
+
+在创建包时，加上一个或多个可用于试验所提供的数据集是一个好注意。对于`npar`包添加life数据库，将该数据框以`.rda`的文件形式添加到包里面，最后把这个文件移动到包文件树的data子文件夹里。
+
+同时我们需要创建一个`.R`文件来作为此数据框的文档，代码点击[`life.R`](./npar/R/life.R) （此文档不再翻译，自行理解）。
+
 
 
 ## <a name="document-pkg"></a>创建包的文档
+
+每个R包都符合一套对文档的强制方案。包里的每一个函数都必须使用LaTeX来以同样的风格撰写文档；LaTeX是一种文档标记语言和排版系统。每个函数都被分别放置在不同的.R文件里，函数对应的文档则被放置在一个.Rd文件中。
+
+**这种方式有两个限制**。第一，文档和它所描述的函数是分开放置的。如果你改变了函数代码，就必须搜索出对应的文档并进行改写。第二，用户必须学习LaTeX，而它的学习曲线比较陡峭。
+
+**`roxygen2`包能够极大地简化文档的创建过程**。你在每一个.R文件的头部放置一段注释作为对应的文档。然后使用一种简单的标记语言来创建文档。当Roxygen2处理文件的时候，以`#'`开始的行会被用来自动生成LaTeX文档（.Rd文件）。
+
+下面描述了每个文件头部的注释所使用的标签，标签（roclet）是使用Roxygen2创建LaTeX文档的基础。
+
+```
+@title          函数名
+@description    一行的函数描述
+@details        多行的函数描述
+@param          函数参数
+@export         添加函数到NAMESPACE
+@method generic class   泛型S3方法的文档
+@return         函数返回的值
+@author         作者和联系地址
+@examples       使用函数的例子
+@note           使用函数的注意事项
+@aliases        用户能够找到文档的额外别名
+@references     函数所涉及的方法的参考文档
+```
+
+在创建文档的时候，另外一些标记元素也很有用。标签`\code{text}`用代码字体把text打印出来，`\link{function}`创建一个指向本包或者别处函数的超级链接。最后`item{text}`创建一个分项列表，这对于描述函数的返回的结果特别有用。
+
+除此之外，我们应该（这个任务是可选的）提供包的介绍文档，以便于`?npar`时能够找到，点击[npar.R](./npar/R/npar.R)可查阅以下代码：
+
+```R
+#' 非参组间比较的函数
+#' 
+#' npar提供了计算和可视化组间差异的工具
+#' 
+#' @docType package
+#' @name npar-package
+#' @aliases npar
+NULL
+
+.......这个文件必须在NULL后有一个空白行........
+```
+
+最后创建一个名为[DESCRIPTION](./npar/DESCRIPTION)的文本文件用于描述包。以下是一个样例
+
+```
+Package: npar
+Type: Package
+Title: Nonparametric group comparisons
+Version: 1.0
+Date: 2015-01-26
+Author: Rob Kabacoff
+Maintainer: Robert Kabacoff <robk@statmethods.net>
+Description: This package assesses group differences using nonparametric
+    statistics. Currently a one-way layout is supported. Kruskal-Wallis tests
+    followed by pairwise Wilcoxon tests are provided. p-values are adjusted
+    for multiple comparisons using the p.adjust() function.
+    Results are plotted via annotated boxplots.
+LazyData: true
+License: GPL-3
+Packaged: 2014-11-05 19:06:44 UTC; rkabacoff
+RoxygenNote: 6.0.1
+```
+
+DESCRIPTION部分可以包含多行，但是第一行之后的行必须缩进。`lazyData:yes`语句表示此包里的数据集应该在载入后尽快变得可用。如果参数设置为`no`用户将不得不用`data(life)`来获取这个数据集。
+
+
 
 ## <a name="build-pkg"></a>建立包
 
