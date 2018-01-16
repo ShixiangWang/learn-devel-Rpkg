@@ -41,6 +41,11 @@ download.file(url, pkg)
 install.packages(pkg, repos = NULL, type = "source")
 ```
 
+```
+## Installing package into '/home/wangshx/R/x86_64-pc-linux-gnu-library/3.4'
+## (as 'lib' is unspecified)
+```
+
 在接下来的内容中，我们将把`npar`包当做一个测试的地方，描述和展示它的功能特性和函数。然后接着我们从头开始创建包。
 
 ## <a name="npar-pkg"></a>非参分析和npar包
@@ -65,7 +70,7 @@ hist(life$hlef, xlab="Healthy Life Expectancy (years) at Age 65",
      col="grey", breaks = 10)
 ```
 
-![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7-1.png)
+![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png)
 
 上图可以看出因变量是负偏的，较低的值数量较少。
 
@@ -81,7 +86,7 @@ ggplot(data=life, aes(x=region, y=hlef)) +
     theme_bw()
 ```
 
-![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8-1.png)
+![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png)
 
 上图中的每个点代表一个州，每个地区的方差都有所不同，东北部和南部的方差差异最大。
 
@@ -135,7 +140,7 @@ plot(results, col="lightblue", main="Multiple Comparisons",
      xlab="US Region", ylab="Healthy Life Expectancy (years) at Age 65")
 ```
 
-![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9-1.png)
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png)
 
 首先，代码运行了一个Kruskal-Wallis检验，这是对不同地区间HLE差异的总体检验，p值0.0005指出确实存在差异。
 
@@ -222,29 +227,35 @@ plot(results, col="lightblue", main="Multiple Comparisons",
 oneway <- function(formula, data, exact=FALSE, sort=TRUE,               
                 method=c("holm", "hochberg", "hommel", "bonferroni",      
                          "BH", "BY", "fdr", "none")){
-  
+  ######### 检查参数 ##########
   if (missing(formula) || class(formula) != "formula" ||
         length(all.vars(formula)) != 2)                                   
-       stop("'formula' is missing or incorrect")   # 检查参数
+       stop("'formula' is missing or incorrect")  
 
-  method <- match.arg(method)
-
-  df <- model.frame(formula, data)        # 设定数据                     
+  method <- match.arg(method) # 参数匹配
+    
+    
+  ######## 设定数据 ###########
+  df <- model.frame(formula, data)                           
   y <- df[[1]]
   g <- as.factor(df[[2]])
   vnames <- names(df)
   
-  if(sort) g <- reorder(g, y, FUN=median)  # 重新排序                         
+  ######## 重新排序 ############
+  if(sort) g <- reorder(g, y, FUN=median)                          
   groups <- levels(g)
   k <- nlevels(g)
   
+  
+  ######## 计算总体统计量 ########
   getstats <- function(x)(c(N = length(x), Median = median(x),      
-                          MAD = mad(x)))   # 总体统计量
+                          MAD = mad(x)))   
   sumstats <- t(aggregate(y, by=list(g), FUN=getstats)[2])
   rownames(sumstats) <- c("n", "median", "mad")
   colnames(sumstats) <- groups
   
-  kw <- kruskal.test(formula, data)   # 统计检验                            
+  ######## 统计检验 ###########
+  kw <- kruskal.test(formula, data)                          
   wmc <- NULL
   for (i in 1:(k-1)){
     for (j in (i+1):k){
@@ -274,6 +285,74 @@ oneway <- function(formula, data, exact=FALSE, sort=TRUE,
 ```
 
 结果被打包并作为一个列表返回。最后该列表的类被设置为`c("oneway", "list")`，**这是使用泛型函数处理对象的重要步骤**。
+
+尽管列表提供了所有需要的信息，但你一般不会直接获取单个分量的信息。相反，你可以创建泛型函数`print()`、`summary()`和`plot()`以更加具体而有意义的方法来表达它们。
+
+### 打印结果
+
+各个领域的大部分分析函数都伴随着对应的泛型函数`print()`和`summary()`。`print()`提供了对象的基本或原始信息，`summary()`提供了更加具体或处理（汇总）过的信息。如果图形在上下文中是有意义的，`plot()`函数也经常一起提供。
+
+**在S3面对对象中，如果一个对象有类属性"foo"，则`print(x)`在`print.foo()`函数存在时运行`print.foo()`，在`print.foo()`函数不存在时运行`print.default()`。`summary()`和`plot()`也有着相同的规则**。因为`oneway()`函数返回一个类为"oneway"的对象，所以你需要定义`print.oneway()`、`summary.oneway()`和`plot.oneway()`函数。
+
+对于life数据集，`print(results)`生成了多重比较的基本信息：
+
+
+```r
+print(results)
+```
+
+```
+## data: hlef by region 
+## 
+## Multiple Comparisons (Wilcoxon Rank Sum Tests)
+## Probability Adjustment = holm
+##         Group.1       Group.2    W       p
+## 1         South North Central 28.0 0.00858
+## 2         South          West 27.0 0.00474
+## 3         South     Northeast 17.0 0.00858
+## 4 North Central          West 63.5 1.00000
+## 5 North Central     Northeast 42.0 1.00000
+## 6          West     Northeast 54.5 1.00000
+```
+
+代码打印了一个有信息量的头部，接着是Wilcoxon统计量和调整后的每一对组别的p值（Group.1和Group.2）。
+
+其源代码文件[`print.R`](./npar/R/print.R)内容如下：
+
+```R
+#' @title 打印多重比较的结果
+#'
+#' @description
+#' \code{print.oneway} 打印多重组间比较的结果
+#'
+#' @details
+#' 这个函数打印出用 \code{\link{oneway}} 函数所创建的Wilcoxon成对多重比较的结果 
+#' 
+#' @param x 一个 \code{oneway}类型的变量
+#' @param ... 要传输给函数的额外的变量
+#' @method print oneway
+#' @export
+#' @return 静默返回输入的变量
+#' @author Rob Kabacoff <rkabacoff@@statmethods.net>
+#' @examples
+#' results <- oneway(hlef ~ region, life)
+#' print(results)
+print.oneway <- function(x, ...){
+  if (!inherits(x, "oneway"))       
+    stop("Object must be of class 'oneway'")
+  
+  cat("data:", x$vnames[1], "by", x$vnames[2], "\n\n")  
+  cat("Multiple Comparisons (Wilcoxon Rank Sum Tests)\n")
+  cat(paste("Probability Adjustment = ", x$method, "\n", sep=""))
+  
+  print(x$wmc,  ...)
+}
+
+```
+
+头部包含的以`#'`开头的注释会被`roxygen2`包生成包文档。`inherits()`函数用于确保被提交的对象有"oneway"这个类。一系列`cat()`函数打印对分析过程的描述。最后调用`print.default()`把多重比较打印出来。
+
+
 
 ## <a name="document-pkg"></a>创建包的文档
 

@@ -1,17 +1,16 @@
-#' @title Print multiple comparisons
+#' @title 打印多重比较的结果
 #'
 #' @description
-#' \code{print.oneway} prints pairwise group comparisons.
+#' \code{print.oneway} 打印多重组间比较的结果
 #'
 #' @details
-#' This function prints Wilcoxon pairwise multiple comparisons created
-#' by the \code{\link{oneway}} function.
+#' 这个函数打印出用 \code{\link{oneway}} 函数所创建的Wilcoxon成对多重比较的结果 
 #' 
-#' @param x an object of class \code{oneway}.
-#' @param ... additional arguments passed to the function.
+#' @param x 一个 \code{oneway}类型的变量
+#' @param ... 要传输给函数的额外的变量
 #' @method print oneway
 #' @export
-#' @return the input object is returned silently.
+#' @return 静默返回输入的变量
 #' @author Rob Kabacoff <rkabacoff@@statmethods.net>
 #' @examples
 #' results <- oneway(hlef ~ region, life)
