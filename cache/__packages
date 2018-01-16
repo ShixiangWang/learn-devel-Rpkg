@@ -2,3 +2,4 @@ base
 npar
 knitr
 ggplot2
+roxygen2
